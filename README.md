@@ -16,7 +16,7 @@
 
 ## Airflow DAG 의존성을 위해 필요 작업
 * DAG 간의 의존성은 dependency_manager 테이블과 dag_log 테이블로 관리
-    * Trigger Task 가 다음 DAG 를 실행시키는데, 이 DAG 의 첫 번째 step 은 dependency_manager 테이블과 dag_log 테이블을 확인하여 현재 step 을 진행할 지 결정함
+    * Trigger Task(check condition) 가 다음 DAG 를 실행시키는데, 이 DAG 의 첫 번째 step 은 dependency_manager 테이블과 dag_log 테이블을 확인하여 현재 step 을 진행할 지 결정함
     * dependency_manager 에는 tobe_dag(다음 step DAG)에 여러 asis_dag(이전 step DAG) 가 매핑된 레코드들 존재
     * dag_log 에는 DAG 가 성공했으면 log 를 남기고 실패했으면 log 를 남기지 않음
 * Legacy → L0, L0 → L1 작업 시, Python 코드 레벨에서 Log UPSERT 구문 필히 넣어야 함
