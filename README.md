@@ -54,7 +54,14 @@
 
 ## Airflow DAG 내 페이징 테이블 이슈
 * 몇 백, 몇 천만 건에 대해서 한 번에 전부 fetch 하여 데이터를 airflow 에 가져오면 heroku worker dyno 가 메모리 부하를 못 버텨 뻗어버림
-* SELECT A.* FROM( SELECT *, ROW_NUMBER() OVER(ORDER BY ORDER_NO) AS row_num FROM {schema_name}.DBO.{table_name} ) AS A WHERE 1=1 AND A.row_num BETWEEN {start_page} AND {start_page+per_page}-1
+* 페이징 처리 구문
+    ```
+        SELECT A.* 
+        FROM( 
+            SELECT *, ROW_NUMBER() OVER(ORDER BY ORDER_NO) AS row_num FROM {schema_name}.DBO.{table_name} 
+        ) AS A 
+        WHERE A.row_num BETWEEN {start_page} AND {start_page+per_page}-1
+    ```
     * 현재 10만 건 이상인 테이블들은 페이징 쿼리로 테이블 pk 기준 오름차순으로 1만 건 씩 가져와 적재하고있음
     * R_ORDER_CONTRACT_ADD 테이블의 PK 는 ORDER_NO 인데 앞의 2글자만 따서 그룹핑을 해보니 '02', '82', 'HI', 'K2', 'ON' 등 어떠한 구분자가 앞에 붙여나오는 걸 확인
     * 이렇게 되면 'HI' 부분 페이징 처리가 끝나고 'ON' 부분 정렬 페이징을 가져올 때, 알파벳 순 'HI' 부분 ORDER_NO 이 삽입이 이루어지면 페이징이 밀려 중복과 손실이 동시에 발생 가능성이 있음
