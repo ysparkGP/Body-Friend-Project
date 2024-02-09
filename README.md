@@ -1,10 +1,10 @@
-# Body Friend
+# Body Friend (Phase 1)
 
 ## 개발 기간
 * 20240102 ~ 202403(말)
 
 ## 개요
-* Phase 2를 위해 Body Friend 원천 데이터를 Heroku Data Hub 에 적재하여 정재하는 프로젝트
+* Phase 2를 위해 Body Friend 원천 데이터를 Heroku Data Hub 에 적재하여 정재하고 Salesforce Service Cloud 에 최종 적재하는 프로젝트
 * Airflow Python 으로 Workflow 를 작성하고, 스케줄하여 모니터링
     * legacy(원천) -> lv0(Heroku Data Hub) : Extract And Load
     * lv0(Heroku Data Hub) -> lv1(Heroku Data Hub) : Transform
