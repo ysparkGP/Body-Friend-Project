@@ -1,0 +1,5 @@
+apache-airflow[postgres,celery,redis,mssql,amazon]==2.8.0
+connexion[swagger-ui]==2.14.2
+pandas==2.1.4
+pyodbc==5.0.1
+pyarrow==14.0.2
