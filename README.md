@@ -5,6 +5,11 @@
 
 ## 개요
 * Phase 2를 위해 Body Friend 원천 데이터를 Heroku Data Hub 에 적재하여 정재하는 프로젝트
+* Airflow Python 으로 Workflow 를 작성하고, 스케줄하여 모니터링
+    * legacy(원천) -> lv0(Heroku Data Hub) : Extract And Load
+    * lv0(Heroku Data Hub) -> lv1(Heroku Data Hub) : Transform
+    * lv1(Heroku Data Hub) -> lv2(Heroku Data Hub) : Transform
+    * lv2(Heroku Data Hub) -> hc(Heroku Data Hub, Heroku Connect) : Load
 
 ## Airflow DAG 흐름도
 <img width="951" alt="Airflow DAG 흐름도" src="https://github.com/ysparkGP/Body-Friend-Project/assets/64354998/5f32b5e4-3019-4a9d-9a83-a2e35d5122bc">
