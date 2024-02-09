@@ -35,7 +35,8 @@
 
 ## Airflow DAG 의존성을 위해 필요 작업
 * Legacy → L0, L0 → L1 작업 시, Python 코드 레벨에서 Log UPSERT 구문 필히 넣어야 함
-    * ex)  '''
+    * ex)  
+        ```
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()
             insert_log_query = f"insert into public.dag_log values('{context['dag_run'].dag_id}', '{now_date}', '{now_timestamp}')\
@@ -46,9 +47,12 @@
                                     completion_datetime = EXCLUDED.completion_datetime;\
                                 "
             post_engine.execute(insert_log_query)
-            '''
+        ```
         <img width="810" alt="스크린샷 2024-02-09 17 48 51" src="https://github.com/ysparkGP/Body-Friend-Project/assets/64354998/cbea9ccb-c614-47da-b9fc-e0d045963e76">
 * dependency_manager 테이블에 다음 레벨 DAG와 의존성 삽입해야 함 
-    * ex) insert into public.dependency_manager values('legacy_to_lv0_UNIERP5.B_MAJOR', 'lv0_dag_UNIERP5.B_MINOR');
+    * ex) 
+        ```
+            insert into public.dependency_manager values('legacy_to_lv0_UNIERP5.B_MAJOR', 'lv0_dag_UNIERP5.B_MINOR');
+        ```
         <img width="1449" alt="dependency_manager table" src="https://github.com/ysparkGP/Body-Friend-Project/assets/64354998/843ba60b-679d-4f88-9091-9fa7e0210db1">
 
