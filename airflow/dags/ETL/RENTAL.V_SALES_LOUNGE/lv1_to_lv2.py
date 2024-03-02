@@ -12,11 +12,11 @@ default_args = {
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
 	'email_on_retry':False,
-	'retries': 3,
+	'retries': 6,
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
-    dag_id = "lv1_dag_RENTAL.R_BIZ_MSG_TEMPLATE",
+    dag_id = "lv1_dag_RENTAL.V_SALES_LOUNGE",
     default_args=default_args,
     schedule_interval=None, # 혹은 "0 12 * * *" 와 같이 cron 표현식 사용
     start_date=datetime(2024,1,4),
@@ -25,7 +25,7 @@ default_args = {
 def lv1_job():
     job_info = {
         'schema' : 'RENTAL',
-        'table' : 'R_BIZ_MSG_TEMPLATE'
+        'table' : 'V_SALES_LOUNGE'
     }
     
     def check_condition(**context):
@@ -47,7 +47,7 @@ def lv1_job():
         check_cnt = postgres_hook.get_records(check_cnt_query)[0][0]
         
         if target_cnt != 0 and target_cnt != 0 and target_cnt == check_cnt : return f'lv1_task_{job_info["schema"]}.{job_info["table"]}'
-        else: return 'no_task'
+        else: raise AirflowException('B_SLAES_ORG, B_SALES_GRP lv1 함수 완료 여부 체크... 30 분 뒤 재실행')
         
     branch = BranchPythonOperator(
         task_id='check_condition',
@@ -66,10 +66,10 @@ def lv1_job():
         postgres_hook = PostgresHook(postgres_conn_id='DATAHUB-ROOT')
         postgres_conn = postgres_hook.get_conn()
         with postgres_conn.cursor() as postgres_cursor:
-            sql = f"select lv1.test();"
+            sql = f"select lv2.func_lv2_to_hc_bbs_map();"
             result = postgres_hook.get_records(sql)
 
-            if not result[0][0]: raise AirflowException("lv1.test: Failed.")
+            if not result[0][0]: raise AirflowException("lv2.func_lv2_to_hc_bbs_map: Failed.")
 
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()

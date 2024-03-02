@@ -5,12 +5,14 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.operators.python import BranchPythonOperator
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python_operator import PythonOperator
+from airflow.exceptions import AirflowException
 
 default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
-	'retries': 3,
+	'email_on_retry':False,
+	'retries': 6,
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
@@ -64,8 +66,16 @@ def lv1_job():
         postgres_hook = PostgresHook(postgres_conn_id='DATAHUB-ROOT')
         postgres_conn = postgres_hook.get_conn()
         with postgres_conn.cursor() as postgres_cursor:
-            sql = f"select lv1.test();"
-            postgres_hook.get_records(sql)
+            sql = f"select lv2.func_lv2_to_hc_experience_reservation_customer();"
+            result = postgres_hook.get_records(sql)
+
+            if not result[0][0]: raise AirflowException("lv2.func_lv2_to_hc_experience_reservation_customer: Failed.")
+            else: 
+                sql = f"select lv2.func_lv2_to_hc_lead();"
+                result = postgres_hook.get_records(sql)
+
+                if not result[0][0]: raise AirflowException("lv2.func_lv2_to_hc_lead: Failed.")
+
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()
             insert_log_query = f"insert into public.dag_log values('{context['dag_run'].dag_id}', '{now_date}', '{now_timestamp}')\

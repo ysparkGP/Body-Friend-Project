@@ -12,7 +12,8 @@ default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
-	'retries': 3,
+	'email_on_retry':False,
+	'retries': 6,
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
@@ -47,7 +48,7 @@ def lv0_job():
         check_cnt = postgres_hook.get_records(check_cnt_query)[0][0]
         
         if target_cnt != 0 and target_cnt != 0 and target_cnt == check_cnt : return f'lv0_task_{job_info["schema"]}.{job_info["table"]}'
-        else: return 'no_task'
+        else: raise AirflowException('R_ORDER_CONTRACT_ADD 테이블이 아직 완성되지 않음')
         
     branch = BranchPythonOperator(
         task_id='check_condition',
@@ -68,7 +69,10 @@ def lv0_job():
         postgres_conn = postgres_hook.get_conn()
         with postgres_conn.cursor() as postgres_cursor:
             sql = f"select lv1.func_daily_r_order_contract();"
-            postgres_hook.get_records(sql)
+            result = postgres_hook.get_records(sql)
+
+            if not result[0][0]: raise AirflowException("lv1.func_daily_r_order_contract: Failed.")
+
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()
             insert_log_query = f"insert into public.dag_log values('{context['dag_run'].dag_id}', '{now_date}', '{now_timestamp}')\

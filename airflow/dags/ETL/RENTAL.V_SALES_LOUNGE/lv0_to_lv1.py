@@ -1,11 +1,13 @@
 from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.operators.dummy import DummyOperator
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.decorators import dag, task
 from datetime import datetime, timedelta
-from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.operators.python import BranchPythonOperator
-from airflow.operators.dummy import DummyOperator
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.exceptions import AirflowException
+from airflow.operators.python import BranchPythonOperator
+from airflow.operators.python_operator import PythonOperator
+
 
 default_args = {
     'owner': 'goldenplanet',
@@ -16,18 +18,18 @@ default_args = {
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
-    dag_id = "lv1_dag_RENTAL.R_BIZ_MSG_TEMPLATE",
+    dag_id = "lv0_dag_RENTAL.V_SALES_LOUNGE",
     default_args=default_args,
     schedule_interval=None, # 혹은 "0 12 * * *" 와 같이 cron 표현식 사용
     start_date=datetime(2024,1,4),
     tags=['RENTAL']
 )
-def lv1_job():
+def lv0_job():
     job_info = {
         'schema' : 'RENTAL',
-        'table' : 'R_BIZ_MSG_TEMPLATE'
+        'table' : 'V_SALES_LOUNGE'
     }
-    
+
     def check_condition(**context):
         now = datetime.now() + timedelta(hours=9)
         now_date = now.date()
@@ -46,7 +48,7 @@ def lv1_job():
         target_cnt = postgres_hook.get_records(target_cnt_query)[0][0]
         check_cnt = postgres_hook.get_records(check_cnt_query)[0][0]
         
-        if target_cnt != 0 and target_cnt != 0 and target_cnt == check_cnt : return f'lv1_task_{job_info["schema"]}.{job_info["table"]}'
+        if target_cnt != 0 and target_cnt != 0 and target_cnt == check_cnt : return f'lv0_task_{job_info["schema"]}.{job_info["table"]}'
         else: return 'no_task'
         
     branch = BranchPythonOperator(
@@ -56,20 +58,21 @@ def lv1_job():
 
     not_condition_task = DummyOperator(task_id="no_task")
 
-    # lv1_job = PostgresOperator(
-    #     task_id = f'lv1_task_{job_info["schema"]}.{job_info["table"]}',
+    # lv0_job = PostgresOperator(
+    #     task_id = f'lv0_task_{job_info["schema"]}.{job_info["table"]}',
     #     postgres_conn_id = "DATAHUB",
-    #     sql = "select lv1.test();",
-    #     runtime_parameters = {"search_path": "lv1"}
+    #     sql = f"select lv0.test();",
+    #     runtime_parameters = {"search_path": "lv0"}
     # )
-    def lv1_job_func(**context):
-        postgres_hook = PostgresHook(postgres_conn_id='DATAHUB-ROOT')
+
+    def lv0_job_func(**context):
+        postgres_hook = PostgresHook(postgres_conn_id='DATAHUB')
         postgres_conn = postgres_hook.get_conn()
         with postgres_conn.cursor() as postgres_cursor:
-            sql = f"select lv1.test();"
+            sql = f"select lv1.func_daily_v_sales_lounge();"
             result = postgres_hook.get_records(sql)
 
-            if not result[0][0]: raise AirflowException("lv1.test: Failed.")
+            if not result[0][0]: raise AirflowException("lv1.func_daily_v_sales_lounge: Failed.")
 
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()
@@ -83,11 +86,26 @@ def lv1_job():
             postgres_cursor.execute(insert_log_query)
             postgres_conn.commit()
 
-    lv1_job = PythonOperator(
-        task_id=f'lv1_task_{job_info["schema"]}.{job_info["table"]}',
-        python_callable=lv1_job_func
+
+    lv0_job = PythonOperator(
+        task_id=f'lv0_task_{job_info["schema"]}.{job_info["table"]}',
+        python_callable=lv0_job_func
     )
 
-    branch >> [not_condition_task, lv1_job]
+    trigger_dag_task = TriggerDagRunOperator(
+        task_id = f'lv0_to_lv1_call_trigger_{job_info["schema"]}.{job_info["table"]}',
+        trigger_dag_id = f'lv1_dag_{job_info["schema"]}.{job_info["table"]}',
+        trigger_run_id = None,
+        execution_date = None,
+        reset_dag_run = True,
+        wait_for_completion = False,
+        poke_interval = 60,
+        allowed_states = ['success'],
+        failed_states=None
+    )
 
-lv1_job()
+
+    branch >> [not_condition_task, lv0_job]
+    lv0_job >> trigger_dag_task
+
+lv0_job()

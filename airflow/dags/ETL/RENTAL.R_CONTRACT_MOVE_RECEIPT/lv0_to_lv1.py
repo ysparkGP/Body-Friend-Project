@@ -12,6 +12,7 @@ default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
+	'email_on_retry':False,
 	'retries': 3,
 	'retry_delay': timedelta(minutes=30)
 }
@@ -67,8 +68,11 @@ def lv0_job():
         postgres_hook = PostgresHook(postgres_conn_id='DATAHUB')
         postgres_conn = postgres_hook.get_conn()
         with postgres_conn.cursor() as postgres_cursor:
-            sql = f"select lv0.test();"
-            postgres_hook.get_records(sql)
+            sql = f"select lv1.func_daily_r_contract_move_receipt();"
+            result = postgres_hook.get_records(sql)
+
+            if not result[0][0]: raise AirflowException("lv1.func_daily_r_contract_move_receipt: Failed.")
+
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()
             insert_log_query = f"insert into public.dag_log values('{context['dag_run'].dag_id}', '{now_date}', '{now_timestamp}')\
@@ -89,7 +93,7 @@ def lv0_job():
 
     trigger_dag_task = TriggerDagRunOperator(
         task_id = f'lv0_to_lv1_call_trigger_{job_info["schema"]}.{job_info["table"]}',
-        trigger_dag_id = f'lv1_dag_{job_info["schema"]}.{job_info["table"]}',
+        trigger_dag_id = f'lv1ex_dag_{job_info["schema"]}.{job_info["table"]}',
         trigger_run_id = None,
         execution_date = None,
         reset_dag_run = True,

@@ -26,6 +26,7 @@ default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
+	'email_on_retry':False,
 	'retries': 3,
 	'retry_delay': timedelta(minutes=30)
 }

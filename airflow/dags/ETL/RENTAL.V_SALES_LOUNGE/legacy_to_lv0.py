@@ -31,7 +31,7 @@ default_args = {
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
-    dag_id = "legacy_to_lv0_RENTAL.R_CONTRACT_MOVE_RECEIPT",
+    dag_id = "legacy_to_lv0_RENTAL.V_SALES_LOUNGE",
     default_args=default_args,
     schedule_interval='0 0 * * *', # 혹은 "0 12 * * *" 와 같이 cron 표현식 사용
     start_date=datetime(2024, 1, 1, tzinfo=local_tz),
@@ -41,7 +41,7 @@ default_args = {
 def etl_dag():
     job_info = {
         'schema' : 'RENTAL',
-        'table' : 'R_CONTRACT_MOVE_RECEIPT'
+        'table' : 'V_SALES_LOUNGE'
     }
 
     @task
@@ -62,7 +62,7 @@ def etl_dag():
         post_db = connection.schema
         post_port = connection.port
         post_engine = create_engine(f'postgresql://{post_user}:{post_pass}@{post_host}:{post_port}/{post_db}', pool_size=40, max_overflow=55)
-        
+
         truncate_query = f'TRUNCATE TABLE lv0.{table_name.lower()}'
         post_engine.execute(truncate_query)
         df.to_sql(name=table_name.lower(), con=post_engine, schema='lv0', if_exists='append', chunksize=1000, index=False, method='multi')

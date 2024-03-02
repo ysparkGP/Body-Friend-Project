@@ -11,7 +11,8 @@ default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
-	'retries': 3,
+	'email_on_retry':False,
+	'retries': 6,
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
@@ -45,7 +46,9 @@ def lv1_job():
         target_cnt = postgres_hook.get_records(target_cnt_query)[0][0]
         check_cnt = postgres_hook.get_records(check_cnt_query)[0][0]
         
-        if target_cnt != 0 and target_cnt != 0 and target_cnt == check_cnt : return f'lv1_task_{job_info["schema"]}.{job_info["table"]}'
+        if target_cnt != 0 and target_cnt != 0 and target_cnt == check_cnt : 
+            # return f'lv1_task_{job_info["schema"]}.{job_info["table"]}'
+            return 'success'
         else: return 'no_task'
         
     branch = BranchPythonOperator(
@@ -54,6 +57,7 @@ def lv1_job():
     )
 
     not_condition_task = DummyOperator(task_id="no_task")
+    success_task = DummyOperator(task_id='success')
 
     # lv1_job = PostgresOperator(
     #     task_id = f'lv1_task_{job_info["schema"]}.{job_info["table"]}',
@@ -68,15 +72,17 @@ def lv1_job():
             sql = f"select lv2.func_delete_nomatch_1();"
             result = postgres_hook.get_records(sql)
             
-            if not result[0][0]: raise AirflowException("lv2.func_delete_nomatch_2: Failed.")
+            if not result[0][0]: raise AirflowException("lv2.func_delete_nomatch_1: Failed.")
             else: 
                 sql = f"select lv2.func_delete_nomatch_2();"
                 result = postgres_hook.get_records(sql)
                 
-                if not result[0][0]: raise AirflowException("lv2.func_delete_nomatch_3: Failed.")
+                if not result[0][0]: raise AirflowException("lv2.func_delete_nomatch_2: Failed.")
                 else: 
                     sql = f"select lv2.func_delete_nomatch_3();"
-                    postgres_hook.get_records(sql)
+                    result = postgres_hook.get_records(sql)
+
+                    if not result[0][0] : raise AirflowException("lv2.func_delete_nomatch_3: Failed.")
             
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()
@@ -95,6 +101,34 @@ def lv1_job():
         python_callable=lv1_job_func
     )
 
-    branch >> [not_condition_task, lv1_job]
+    def lv1_job_func_2(**context):
+        postgres_hook = PostgresHook(postgres_conn_id='DATAHUB-ROOT')
+        postgres_conn = postgres_hook.get_conn()
+        with postgres_conn.cursor() as postgres_cursor:
+            sql = f"select lv2.func_lv2_to_hc_account();"
+            result = postgres_hook.get_records(sql)
+            
+            if not result[0][0]: raise AirflowException("lv2.func_lv2_to_hc_account: Failed.")
+            
+            now_timestamp = datetime.now() + timedelta(hours=9)
+            now_date = now_timestamp.date()
+            insert_log_query = f"insert into public.dag_log values('{context['dag_run'].dag_id}', '{now_date}', '{now_timestamp}')\
+                                    on conflict (dag_id, completion_date) DO\
+                                    UPDATE\
+                                    set dag_id = EXCLUDED.dag_id,\
+                                    completion_date = EXCLUDED.completion_date,\
+                                    completion_datetime = EXCLUDED.completion_datetime;\
+                                "
+            postgres_cursor.execute(insert_log_query)
+            postgres_conn.commit()
+
+    lv1_job_2 = PythonOperator(
+        task_id=f'lv1_task_{job_info["schema"]}.{job_info["table"]}_2',
+        python_callable=lv1_job_func_2
+    )
+
+    branch >> [not_condition_task, success_task]
+    success_task >> lv1_job
+    success_task >> lv1_job_2
 
 lv1_job()

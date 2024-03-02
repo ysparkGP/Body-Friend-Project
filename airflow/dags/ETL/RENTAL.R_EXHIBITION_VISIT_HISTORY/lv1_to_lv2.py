@@ -12,7 +12,8 @@ default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
-	'retries': 3,
+	'email_on_retry':False,
+	'retries': 6,
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
@@ -72,7 +73,9 @@ def lv1_job():
             if not result[0][0]: raise AirflowException("lv2.func_lv2_to_hc_exhibition_visit_customer: Failed.")
             else: 
                 sql = f"select lv2.func_lv2_to_hc_exhibition_visit_history();"
-                postgres_hook.get_records(sql)
+                result = postgres_hook.get_records(sql)
+
+                if not result[0][0]: raise AirflowException("lv2.func_lv2_to_hc_exhibition_visit_history: Failed.")
 
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()

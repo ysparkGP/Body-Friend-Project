@@ -26,6 +26,7 @@ default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
+	'email_on_retry':False,
 	'retries': 3,
 	'retry_delay': timedelta(minutes=30)
 }
@@ -75,6 +76,8 @@ def etl_dag():
             sql = f"SELECT A.* FROM( SELECT *, ROW_NUMBER() OVER(ORDER BY INSRT_DT) AS row_num FROM {schema_name}.DBO.{table_name} ) AS A WHERE 1=1 AND A.row_num BETWEEN {start_page} AND {start_page+per_page}-1 ";
                     
             start_page += per_page
+
+            print(sql)
             df = pd.read_sql(sql, ms_engine)
 
             # NULL Byte 처리

@@ -7,6 +7,10 @@ import json
 import requests
 import re
 from datetime import datetime, timedelta
+from airflow.operators.python import BranchPythonOperator
+from airflow.operators.python_operator import PythonOperator
+from airflow.operators.dummy import DummyOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 local_tz = pendulum.timezone("Asia/Seoul")
 address_api_key = Variable.get("kakao_rest_api_key")
@@ -15,34 +19,68 @@ default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
 	'email_on_failure': True,
+	'email_on_retry':False,
 	'retries': 3,
 	'retry_delay': timedelta(minutes=30)
 }
 
 @dag(
-    dag_id = "refine_address",
+    dag_id = 'lv1ex_dag_RENTAL.R_SHIPPING_INFO',
     default_args=default_args,
     start_date=datetime(2024, 1, 1, tzinfo=local_tz),
-    schedule_interval="0 0 * * *",
+    schedule_interval=None,
     max_active_runs=1, 
-    tags=['lv1','api']
+    tags=['lv1','api'],
+    catchup=False
 )
 def refine_address():
     job_info = {
-        'schema' : 'lv1',
-        'table' : 'address_master'
+        'schema' : 'RENTAL',
+        'table' : 'R_SHIPPING_INFO'
     }
-    @task
+
+    def check_condition(**context):
+        now = datetime.now() + timedelta(hours=9)
+        now_date = now.date()
+        postgres_hook = PostgresHook(postgres_conn_id='DATAHUB')
+        target_cnt_query = f"select count(*)\
+                            from public.dependency_manager\
+                            where 1=1\
+                            and tobe_dag = '{context['dag_run'].dag_id}';"
+        check_cnt_query = f"select count(*)\
+                    from public.dependency_manager  a \
+                    join public.dag_log b \
+                    on(a.asis_dag = b.dag_id)\
+                    where 1=1\
+                    and a.tobe_dag = '{context['dag_run'].dag_id}'\
+                    and b.completion_date = '{now_date}';"
+        target_cnt = postgres_hook.get_records(target_cnt_query)[0][0]
+        check_cnt = postgres_hook.get_records(check_cnt_query)[0][0]
+        
+        if target_cnt != 0 and target_cnt != 0 and target_cnt == check_cnt : return 'check_address'
+        else: return 'no_task'
+
+    branch = BranchPythonOperator(
+        task_id='check_condition',
+        python_callable=check_condition
+    )
+
+    not_condition_task = DummyOperator(task_id="no_task")
+
     def check_address():
         # PostgresHook을 사용하여 데이터베이스 연결 설정
         pg_hook = PostgresHook(postgres_conn_id='DATAHUB')
         
-        # lv1.address_example 테이블에서 데이터 읽기
-        query = '''select distinct A.legacy_addr from lv1.v_customer A left join lv1.address_master B on B.legacy_address = A.legacy_addr where B.seq is null'''
+        query = '''select distinct A.legacy_addr from lv1.r_shipping_info A left join lv1.address_master B on B.legacy_address = A.legacy_addr where B.seq is null and A.legacy_addr is not null'''
         pg_engine = pg_hook.get_conn()
         df = pd.read_sql(query, pg_engine)
 
         return df
+    
+    address_check = PythonOperator(
+        task_id='check_address',
+        python_callable=check_address
+    )
     
     @task
     def search_address(**context):
@@ -167,20 +205,22 @@ def refine_address():
                                 'x',
                                 'y'
                             ],
-                            on_conflict=[
-                                ('road_address_tf', 'EXCLUDED.road_address_tf'),
-                                ('address_name', 'EXCLUDED.address_name'),
-                                ('region_1depth_name', 'EXCLUDED.region_1depth_name'),
-                                ('region_2depth_name', 'EXCLUDED.region_2depth_name'),
-                                ('region_3depth_name', 'EXCLUDED.region_3depth_name'),
-                                ('region_3depth_h_name', 'EXCLUDED.region_3depth_h_name'),
-                                ('building_name', 'EXCLUDED.building_name'),
-                                ('building_dong', 'EXCLUDED.building_dong'),
-                                ('building_ho', 'EXCLUDED.building_ho'),
-                                ('zone_no', 'EXCLUDED.zone_no'),
-                                ('x', 'EXCLUDED.x'),
-                                ('y', 'EXCLUDED.y'),
-                            ]
+                            replace=True,
+                            replace_index="legacy_address"
+                            # on_conflict=[
+                            #     ('road_address_tf', 'EXCLUDED.road_address_tf'),
+                            #     ('address_name', 'EXCLUDED.address_name'),
+                            #     ('region_1depth_name', 'EXCLUDED.region_1depth_name'),
+                            #     ('region_2depth_name', 'EXCLUDED.region_2depth_name'),
+                            #     ('region_3depth_name', 'EXCLUDED.region_3depth_name'),
+                            #     ('region_3depth_h_name', 'EXCLUDED.region_3depth_h_name'),
+                            #     ('building_name', 'EXCLUDED.building_name'),
+                            #     ('building_dong', 'EXCLUDED.building_dong'),
+                            #     ('building_ho', 'EXCLUDED.building_ho'),
+                            #     ('zone_no', 'EXCLUDED.zone_no'),
+                            #     ('x', 'EXCLUDED.x'),
+                            #     ('y', 'EXCLUDED.y'),
+                            # ]
                         )
                     else:
                         chunks.pop()
@@ -223,7 +263,20 @@ def refine_address():
             return True
         run_address_func()
 
-    check_address() >> search_address()
+    trigger_dag_task = TriggerDagRunOperator(
+        task_id = f'lv0_to_lv1ex_call_trigger_{job_info["schema"]}.{job_info["table"]}',
+        trigger_dag_id = f'lv1_dag_{job_info["schema"]}.{job_info["table"]}',
+        trigger_run_id = None,
+        execution_date = None,
+        reset_dag_run = True,
+        wait_for_completion = False,
+        poke_interval = 60,
+        allowed_states = ['success'],
+        failed_states=None
+    )
+
+    branch >> [not_condition_task, address_check]
+    address_check >> search_address() >> trigger_dag_task
 
 refine_address()
 
