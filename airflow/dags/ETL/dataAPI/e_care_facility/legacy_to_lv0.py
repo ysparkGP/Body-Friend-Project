@@ -30,7 +30,8 @@ default_args = {
     default_args=default_args,
     schedule_interval=None, # 혹은 "0 12 * * *" 와 같이 cron 표현식 사용
     start_date=datetime(2024,1,4),
-    tags=['DATAAPI']
+    tags=['DATAAPI'],
+    catchup=False
 )
 def e_care_facility_dag():
     job_info = {

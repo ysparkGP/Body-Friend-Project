@@ -15,6 +15,7 @@ db_host = 'ec2-18-176-179-213.ap-northeast-1.compute.amazonaws.com'
 db_port = '5432'
 db_name = 'doq46gccfbqdp'
 
+local_tz = pendulum.timezone("Asia/Seoul")
 
 default_args = {
     'owner': 'goldenplanet',
@@ -27,9 +28,10 @@ default_args = {
 @dag(
     dag_id = "legacy_to_lv0_DATAAPI.CARE_CENTER",
     default_args=default_args,
-    schedule_interval=None, # 혹은 "0 12 * * *" 와 같이 cron 표현식 사용
-    start_date=datetime(2024,1,4),
-    tags=['DATAAPI']
+    schedule_interval='0 0 * * *',
+    start_date=datetime(2024, 1, 1, tzinfo=local_tz),
+    tags=['DATAAPI'],
+    catchup=False
 )
 def care_center_dag():
     job_info = {

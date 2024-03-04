@@ -22,9 +22,10 @@ default_args = {
 @dag(
     dag_id = "legacy_to_lv0_DATAAPI.WELFARE_CENTER",
     default_args=default_args,
-    schedule_interval=None, # 혹은 "0 12 * * *" 와 같이 cron 표현식 사용
-    start_date=datetime(2024,1,4),
-    tags=['DATAAPI']
+    schedule_interval='0 0 * * *',
+    start_date=datetime(2024, 1, 1, tzinfo=local_tz),
+    tags=['DATAAPI'],
+    catchup=False
 )
 def welfare_center_dag():
     job_info = {
