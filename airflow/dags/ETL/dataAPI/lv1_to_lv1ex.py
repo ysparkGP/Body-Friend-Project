@@ -11,6 +11,7 @@ from airflow.operators.python import BranchPythonOperator
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.exceptions import AirflowException
 
 local_tz = pendulum.timezone("Asia/Seoul")
 address_api_key = Variable.get("kakao_rest_api_key")
@@ -58,7 +59,7 @@ def refine_address():
         check_cnt = postgres_hook.get_records(check_cnt_query)[0][0]
         
         if target_cnt != 0 and target_cnt != 0 and target_cnt == check_cnt : return 'check_address'
-        else: return 'no_task'
+        else: raise AirflowException("공공기관 5개 DAG 가 아직 완료되지 않음.")
         
     branch = BranchPythonOperator(
         task_id='check_condition',
