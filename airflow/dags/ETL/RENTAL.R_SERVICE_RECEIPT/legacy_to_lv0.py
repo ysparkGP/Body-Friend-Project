@@ -73,16 +73,19 @@ def etl_dag():
         post_engine.execute(truncate_query)
 
         while start_page <= total_cnt:
-            sql = f"SELECT A.* FROM( SELECT *, ROW_NUMBER() OVER(ORDER BY INSRT_DT) AS row_num FROM {schema_name}.DBO.{table_name} ) AS A WHERE 1=1 AND A.row_num BETWEEN {start_page} AND {start_page+per_page}-1 ";
-                    
-            start_page += per_page
+            sql = f"SELECT A.* FROM( SELECT *, RENTAL.DBO.FN_DEC(TEL_NO) AS DEC_TEL_NO, RENTAL.DBO.FN_DEC(HAND_TEL_NO) AS DEC_HAND_TEL_NO, ROW_NUMBER() OVER(ORDER BY INSRT_DT) AS row_num FROM {schema_name}.DBO.{table_name} ) AS A WHERE 1=1 AND A.row_num BETWEEN {start_page} AND {start_page+per_page}-1 ";
+            print(f'{start_page} PAGE START')
+            
             df = pd.read_sql(sql, ms_engine)
+            print(f'{start_page} READ COMPLETE')
 
             # NULL Byte 처리
             re_null = re.compile(pattern='\x00')
             df.replace(regex=re_null, value='', inplace=True)
             df.to_sql(name=table_name.lower(), con=post_engine, schema='lv0', if_exists='append', chunksize=1000, index=False, method='multi')
-
+            print(f'{start_page} INSERT COMPLETE')
+            start_page += per_page
+            
         # sql = f"SELECT * FROM {schema_name}.DBO.{table_name}";
         # df = pd.read_sql(sql, ms_engine)
         # context['task_instance'].xcom_push(key='xcom_push_value', value=df.to_string())
