@@ -38,7 +38,7 @@ def lv0_job():
         postgres_hook = PostgresHook(postgres_conn_id='DATAHUB')
         postgres_conn = postgres_hook.get_conn()
         with postgres_conn.cursor() as postgres_cursor:
-            sql = f"select hc.func_hc_to_lv1_product()();"
+            sql = f"select hc.func_hc_to_lv1_product();"
             result = postgres_hook.get_records(sql)
 
             if not result[0][0]: raise AirflowException("hc.func_hc_to_lv1_product(): Failed.")
