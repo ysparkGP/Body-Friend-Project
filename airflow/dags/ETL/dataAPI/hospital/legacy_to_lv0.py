@@ -15,7 +15,7 @@ local_tz = pendulum.timezone("Asia/Seoul")
 
 default_args = {
     'owner': 'goldenplanet',
-    'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
+    'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr','jwjang@goldenplanet.co.kr','ejshin@goldenplanet.co.kr'],
 	'email_on_failure': True,
 	'email_on_retry':False,
 	'retries': 3,

@@ -18,7 +18,7 @@ address_api_key = Variable.get("kakao_rest_api_key")
 
 default_args = {
     'owner': 'goldenplanet',
-    'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr'],
+    'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr','jwjang@goldenplanet.co.kr','ejshin@goldenplanet.co.kr'],
 	'email_on_failure': True,
 	'email_on_retry':False,
 	'retries': 3,
@@ -276,9 +276,21 @@ def refine_address():
         failed_states=None
     )
 
+    backup_trigger_dag_task = TriggerDagRunOperator(
+        task_id = f'backup_call_trigger_{job_info["schema"]}.{job_info["table"]}',
+        trigger_dag_id = f'backup_dag.ADDRESS_MASTER_LOG',
+        trigger_run_id = None,
+        execution_date = None,
+        reset_dag_run = True,
+        wait_for_completion = False,
+        poke_interval = 60,
+        allowed_states = ['success'],
+        failed_states=None
+    )
+
 
     branch >> [not_condition_task, address_check]
-    address_check >> search_address() >> trigger_dag_task
+    address_check >> search_address() >> [trigger_dag_task, backup_trigger_dag_task]
 
 refine_address()
 

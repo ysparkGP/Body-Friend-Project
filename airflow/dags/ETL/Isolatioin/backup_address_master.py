@@ -8,7 +8,6 @@ from airflow.exceptions import AirflowException
 from airflow.operators.python import BranchPythonOperator
 from airflow.operators.python_operator import PythonOperator
 
-
 default_args = {
     'owner': 'goldenplanet',
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr','jwjang@goldenplanet.co.kr','ejshin@goldenplanet.co.kr'],
@@ -18,16 +17,16 @@ default_args = {
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
-    dag_id = "lv0_dag_RENTAL.V_SALES_LOUNGE",
+    dag_id = "backup_dag.ADDRESS_MASTER_LOG",
     default_args=default_args,
     schedule_interval=None, # 혹은 "0 12 * * *" 와 같이 cron 표현식 사용
     start_date=datetime(2024,1,4),
-    tags=['RENTAL']
+    tags=['BACKUP']
 )
 def lv0_job():
     job_info = {
-        'schema' : 'RENTAL',
-        'table' : 'V_SALES_LOUNGE'
+        'schema' : 'BACKUP',
+        'table' : 'ADDRESS_MASTER_LOG'
     }
 
     def check_condition(**context):
@@ -69,10 +68,15 @@ def lv0_job():
         postgres_hook = PostgresHook(postgres_conn_id='DATAHUB')
         postgres_conn = postgres_hook.get_conn()
         with postgres_conn.cursor() as postgres_cursor:
-            sql = f"select lv1.func_daily_v_sales_lounge();"
-            result = postgres_hook.get_records(sql)
+            yesterday = datetime.now() + timedelta(hours=9) - timedelta(days=1)
+            yesterday_date = yesterday.date()
 
-            if not result[0][0]: raise AirflowException("lv1.func_daily_v_sales_lounge: Failed.")
+            sql = f"TRUNCATE TABLE lv1.address_master_log_{str(yesterday_date).replace('-','')}"
+            postgres_hook.get_records(sql)
+
+            sql = f"insert into lv1.address_master_log_{str(yesterday_date).replace('-','')}(seq, legacy_address , accuracy , road_address_tf, address_name ,region_1depth_name ,region_2depth_name ,region_3depth_name ,region_3depth_h_name , building_name , building_dong ,zone_no ,x ,y ,register_dt , logging_dt)\
+                    select seq, legacy_address , accuracy , road_address_tf, address_name ,region_1depth_name ,region_2depth_name ,region_3depth_name ,region_3depth_h_name , building_name , building_dong ,zone_no ,x ,y ,register_dt , {str(yesterday_date).replace('-','')} from lv1.address_master am"
+            postgres_hook.get_records(sql)
 
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()
@@ -92,20 +96,6 @@ def lv0_job():
         python_callable=lv0_job_func
     )
 
-    trigger_dag_task = TriggerDagRunOperator(
-        task_id = f'lv0_to_lv1_call_trigger_{job_info["schema"]}.{job_info["table"]}',
-        trigger_dag_id = f'lv1ex_dag_{job_info["schema"]}.{job_info["table"]}',
-        trigger_run_id = None,
-        execution_date = None,
-        reset_dag_run = True,
-        wait_for_completion = False,
-        poke_interval = 60,
-        allowed_states = ['success'],
-        failed_states=None
-    )
-
-
     branch >> [not_condition_task, lv0_job]
-    lv0_job >> trigger_dag_task
 
 lv0_job()
