@@ -66,3 +66,45 @@
     * R_ORDER_CONTRACT_ADD 테이블의 PK 는 ORDER_NO 인데 앞의 2글자만 따서 그룹핑을 해보니 '02', '82', 'HI', 'K2', 'ON' 등 어떠한 구분자가 앞에 붙여나오는 걸 확인
     * 이렇게 되면 'HI' 부분 페이징 처리가 끝나고 'ON' 부분 정렬 페이징을 가져올 때, 알파벳 순 'HI' 부분 ORDER_NO 이 삽입이 이루어지면 페이징이 밀려 중복과 손실이 동시에 발생 가능성이 있음
     * INSRT_DT 컬럼으로 페이징 정렬 기준을 바꿔야 함
+    * 페이징 처리 11개 테이블 조사 결과
+    * R_CONTRACT_CANCEL_RECEIPT
+        * 날짜에 대한 인덱스는 없지만 11만 건 레코드라서 금방 처리 됨
+        * INSRT_DT 로 변경
+        * 소요시간 : 약 5~6분
+    * R_CRM_INFO
+        * ZIP_SEQ : IDENTITY 자동 증가 컬럼
+        * 소요시간 : 약 6시간 30분 ~
+    * R_ORDER_CONTRACT
+        * INSERT_DT 인덱스 존재
+        * INSRT_DT 로 변경
+        * 소요시간 : 약 1시간 40분 ~
+    * R_ORDER_CONTRACT_ADD
+        * INSRT_DT 인덱스 존재
+        * INSRT_DT 로 변경
+        * 소요시간 : 약 1시간 17분 ~
+    * R_ORDER_CUST_INFO
+        * INSRT_DT 인덱스 없음
+        * 그래도 성능 나쁘지 않음
+        * 파티션 걸려있나?
+        * 소요시간 : 약 1시간 30분 ~
+    * R_SERVICE_EVALUATION
+        * EVAL_SEQ : IDENTITY 자동 증가 컬럼
+        * 소요시간 : 약 7분 ~
+    * R_SERVICE_RECEIPT
+        * INSRT_DT 인덱스 없음
+        * 잘 모르겠음
+        * 소요시간 : 약 1시간 30분 ~
+    * R_SHIPPING_EVALUATION
+        * EVAL_SEQ : IDENTITY 자동 증가 컬럼
+        * 소요시간 : 약 7분 ~
+    * R_SHIPPING_INFO
+        * INSRT_DT 결합 인덱스
+        * 소요시간 : 약 1시간 50분 ~
+    * V_CUSTOMER
+        * 뷰
+        * INSRT_DT 로 정렬
+        * 소요시간 : 약 1시간 50분~
+    * V_HOME_CARE
+        * 뷰
+        * CONT_DT 로 정렬해도 속도 괜찮
+        * 소요시간 : 약 40분 ~
