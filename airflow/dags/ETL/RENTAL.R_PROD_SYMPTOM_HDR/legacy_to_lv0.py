@@ -80,5 +80,18 @@ def etl_dag():
         post_engine.execute(insert_log_query)
         # post_engine.commit() 
 
-    etl_mssql() 
+    trigger_dag_task = TriggerDagRunOperator(
+        task_id = f'source_to_lv0_call_trigger_{job_info["schema"]}.{job_info["table"]}',
+        trigger_dag_id = f'lv0_dag_{job_info["schema"]}.{job_info["table"]}',
+        trigger_run_id = None,
+        execution_date = None,
+        reset_dag_run = True,
+        wait_for_completion = False,
+        poke_interval = 60,
+        allowed_states = ['success'],
+        failed_states=None
+    )
+
+    etl_mssql() >> trigger_dag_task
+    
 etl_dag()

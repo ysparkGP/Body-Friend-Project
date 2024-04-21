@@ -91,20 +91,6 @@ def lv0_job():
         python_callable=lv0_job_func
     )
 
-    trigger_dag_task = TriggerDagRunOperator(
-        task_id = f'lv0_to_lv1_call_trigger_{job_info["schema"]}.{job_info["table"]}',
-        trigger_dag_id = f'lv1_dag_{job_info["schema"]}.{job_info["table"]}',
-        trigger_run_id = None,
-        execution_date = None,
-        reset_dag_run = True,
-        wait_for_completion = False,
-        poke_interval = 60,
-        allowed_states = ['success'],
-        failed_states=None
-    )
-
-
     branch >> [not_condition_task, lv0_job]
-    lv0_job >> trigger_dag_task
 
 lv0_job()
