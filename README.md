@@ -40,6 +40,8 @@
             insert into public.dependency_manager values('legacy_to_lv0_UNIERP5.B_MAJOR', 'lv0_dag_UNIERP5.B_MINOR');
         ```
         <img width="1449" alt="dependency_manager table" src="https://github.com/ysparkGP/Body-Friend-Project/assets/64354998/843ba60b-679d-4f88-9091-9fa7e0210db1">
+* 의존성 체킹에 걸려 전에 완료하지 못한 DAG 가 있을 경우엔, retry_delay(30분) 간 대기 하면서 설정된 retries 횟수만큼 재시도 함
+    <img width="910" alt="image" src="https://github.com/ysparkGP/Body-Friend-Project/assets/64354998/62503be8-a151-40b0-b7a3-8ae7d1495345">
 
 ## Airflow 병렬 실행 시 이슈
 * 대용량 테이블 목록(160만 건 ~ 230만 건)
