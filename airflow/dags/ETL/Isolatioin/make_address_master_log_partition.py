@@ -104,6 +104,16 @@ class DML(Databases):
             print(e)
             raise AirflowException()
         return result
+    
+    def insertDB(self,sql):
+        try:
+            print(sql)
+            self.cursor.execute(sql)
+            self.db.commit()
+        except Exception as e :
+            print(e)
+            self.db.rollback()
+            raise AirflowException()
 
 local_tz = pendulum.timezone("Asia/Seoul")
 
@@ -170,6 +180,17 @@ def etl_job():
                 tomorrow_str = tomorrow.strftime('%Y-%m-%d')  # YYYY-MM-DD 형식으로 변경
                 # 테이블 생성
                 db_ddl.createTB(i[0], i[1], today_str, tomorrow_str)
+
+        now_timestamp = datetime.now() + timedelta(hours=9)
+        now_date = now_timestamp.date()
+        insert_log_query = f"insert into public.dag_log values('{context['dag_run'].dag_id}', '{now_date}', '{now_timestamp}')\
+                                on conflict (dag_id, completion_date) DO\
+                                UPDATE\
+                                set dag_id = EXCLUDED.dag_id,\
+                                completion_date = EXCLUDED.completion_date,\
+                                completion_datetime = EXCLUDED.completion_datetime;\
+                            "
+        db_dml.insertDB(insert_log_query)
 
     etl = PythonOperator(
         task_id=f'lv0_task_{job_info["schema"]}.{job_info["table"]}',
