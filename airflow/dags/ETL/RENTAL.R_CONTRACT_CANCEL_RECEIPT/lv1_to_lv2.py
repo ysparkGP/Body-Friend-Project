@@ -12,7 +12,7 @@ default_args = {
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr','jwjang@goldenplanet.co.kr','ejshin@goldenplanet.co.kr'],
 	'email_on_failure': True,
 	'email_on_retry':False,
-	'retries': 3,
+	'retries': 9,
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
@@ -69,7 +69,7 @@ def lv1_job():
             sql = f"select lv2.func_lv2_to_hc_contract_cancel_receipt();"
             result = postgres_hook.get_records(sql)
 
-            if not result[0][0]: raise AirflowException("lv2.func_lv2_to_hc_contract_cancel_receipt: Failed.")
+            if not result[0][0]: raise AirflowException("lv2.b: Failed.")
 
             now_timestamp = datetime.now() + timedelta(hours=9)
             now_date = now_timestamp.date()
