@@ -12,7 +12,7 @@ default_args = {
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr','jwjang@goldenplanet.co.kr','ejshin@goldenplanet.co.kr'],
 	'email_on_failure': True,
 	'email_on_retry':False,
-	'retries': 6,
+	'retries': 9,
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
@@ -83,18 +83,6 @@ def lv1_job():
                     result = postgres_hook.get_records(sql)
 
                     if not result[0][0] : raise AirflowException("lv2.func_delete_nomatch_3: Failed.")
-            
-            now_timestamp = datetime.now() + timedelta(hours=9)
-            now_date = now_timestamp.date()
-            insert_log_query = f"insert into public.dag_log values('{context['dag_run'].dag_id}', '{now_date}', '{now_timestamp}')\
-                                    on conflict (dag_id, completion_date) DO\
-                                    UPDATE\
-                                    set dag_id = EXCLUDED.dag_id,\
-                                    completion_date = EXCLUDED.completion_date,\
-                                    completion_datetime = EXCLUDED.completion_datetime;\
-                                "
-            postgres_cursor.execute(insert_log_query)
-            postgres_conn.commit()
 
     lv1_job = PythonOperator(
         task_id=f'lv1_task_{job_info["schema"]}.{job_info["table"]}',

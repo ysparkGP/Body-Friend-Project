@@ -12,7 +12,7 @@ default_args = {
     'email': ['yspark@goldenplanet.co.kr','dhlee@goldenplanet.co.kr','jwjang@goldenplanet.co.kr','ejshin@goldenplanet.co.kr'],
 	'email_on_failure': True,
 	'email_on_retry':False,
-	'retries': 6,
+	'retries': 9,
 	'retry_delay': timedelta(minutes=30)
 }
 @dag(
